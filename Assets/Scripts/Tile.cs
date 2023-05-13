@@ -13,11 +13,11 @@ public class Tile : MonoBehaviour
     public MeshRenderer mesh;
     private void Awake()
     {
-        mesh = GetComponent<MeshRenderer>();
+        //mesh = GetComponent<MeshRenderer>();
     }
     private void Start()
     {
-        bm = BoardManager._instance;
+       /* bm = BoardManager._instance;*/
     }
     private void OnMouseOver()
     {
@@ -26,7 +26,7 @@ public class Tile : MonoBehaviour
     {
         
         
-        bm.TileSelected(this);
+        BoardManager._instance.TileSelected(this);
 /*        print(matchId);
 */
     }

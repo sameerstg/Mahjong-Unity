@@ -2,17 +2,20 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-
+using UnityEngine.UI;
 
 public class BoardManager : MonoBehaviour
 {
     public static BoardManager _instance;
 
     public List<Material> materials = new();
-    public int rows, columns, layers;
-    [field: SerializeField]public Table table;
+    public int x, y, layers;
+    public float gap;
     List<Tile> tileList = new List<Tile>();
-    Tile prevSelectedTile;
+    public Tile prevSelectedTile;
+    public Grid grid;
+    public GameObject piecesParent;
+    
     private void Awake()
     {
         _instance = this;
@@ -20,7 +23,8 @@ public class BoardManager : MonoBehaviour
     private void Start()
     {
 
-        table = new Table(layers, columns, rows);
+        //table = new Table(layers, columns, rows);
+        //grid = new (x, y, layers);
 
         GenerateBoard();
 
@@ -28,100 +32,52 @@ public class BoardManager : MonoBehaviour
 
     public void GenerateBoard()
     {
-        if (Mathf.Pow( columns*rows,layers)%4 != 0)
+
+
+
+       /* if (Mathf.Pow(columns * rows, layers) % 4 != 0)
         {
             return;
-        }
-        GameObject Cube = Resources.Load<GameObject>("Cube");
-        Transform parrent = transform.GetChild(0);
-        Vector3 firstTrans = parrent.GetChild(0).position;
-        //  Setting Tiles
-
-        for (int k = 0; k < table.layers.Length; k++)
-        {
-            
-
-            for (int i = 0; i < table.layers[k].columns.Length; i++)
-            {
-
-                for (int j = 0; j < table.layers[k].columns[i].rows.Length; j++)
-                {
-
-                    GameObject tile = Instantiate(Cube, transform.position, Quaternion.identity);
-                    table.layers[k].columns[i].rows[j].tile = tile;
-                    tile.transform.parent = parrent;
-                    tile.transform.position = firstTrans;
-                    firstTrans.x += Cube.transform.localScale.x;
+        }*/
+        GameObject Cube = piecesParent.transform.GetChild(0).gameObject;
 
 
-                    Tile tileS = tile.GetComponent<Tile>();
-                    tileS.tileInfo = new TileInfo(j, i, k);
-                    
-                    tile.name = $"layer = {k} , col = {i} , row {j}";
-                }
-                firstTrans.x = parrent.transform.GetChild(0).position.x;
-                firstTrans.y -= Cube.transform.localScale.y;
-            }
-            firstTrans.z -= Cube.transform.localScale.z;
-            var tempZPos = firstTrans;
-            firstTrans = parrent.GetChild(0).position;
-            firstTrans.z = tempZPos.z;
-            
-        }
-        GiveIds();
-    }
-    void GiveIds()
-    {
+        Vector3 size = Cube.GetComponent<Renderer>().bounds.size;
         int id = 0;
-        int index = 0;
-        int mathcId = GetRandomMaterialNumber(); ;
-        List<Tile> tiles = new List<Tile>();
-        foreach (var item in table.layers)
+
+        for (int i = 0; i < grid.depth.Length; i++)
         {
-            foreach (var c in item.columns)
+
+            for (int j = 0; j < grid.depth[i].columns.Length; j++)
             {
-                foreach (var r in c.rows)
+
+                for (int k = 0; k < grid.depth[i].columns[j].tiles.Length; k++)
                 {
-                    tiles.Add(r.tile.GetComponent<Tile>());
-
-
                     
-                }
+                                       Vector3 firstTrans = new Vector3();
+                                       firstTrans.x = (((grid.depth[i].columns.Length - 1) * (-size.x)) / 2) + ((size.x+gap) * j);
+                    firstTrans.y = ((grid.depth[i].columns[j].tiles.Length - 1) * (size.y) / 2) + ((-size.y-gap) * k);
+                    firstTrans.z = (((grid.depth.Length - 1) * (-size.z )/2)+ ((size.z+gap)*i));
+                    int matchId = Random.Range(0, piecesParent.transform.childCount - 1);
+                    GameObject tile = Instantiate(piecesParent.transform.GetChild(matchId).gameObject, firstTrans, Quaternion.identity,transform.GetChild(0));
+                    tile.name = $"x = {k} , y = {j} , z = {i}";
+                    Tile tileScript = tile.AddComponent<Tile>();
+                    tileScript.tileInfo = new TileInfo(k, j, i,id,matchId);
+                    id++;
+                    tile.AddComponent<BoxCollider>();
+                                   }
             }
-            while (tiles.Count > 0)
-            {
-
-                int temp = Random.Range(0, tiles.Count);
-                
-                SetMaterial(tiles[temp].mesh, materials[mathcId]);
-                tiles[temp].tileInfo.SetIds(id, mathcId);
-                
-                tiles[temp].tileInfo.id = id;
-                tiles[temp].gameObject.name += $" ,id = {id}";
-                tiles.RemoveAt(temp);
-                index++;
-                id++;
-                if (index == 2)
-                {
-                    mathcId = GetRandomMaterialNumber();
-                    index = 0;
-                }
+        }
             }
+   
+    
+       public void TileSelected(Tile tile)
+    {
+        Debug.Log("clicked");
+        if (GetTileByCoord(tile.tileInfo.x,tile.tileInfo.y-1,tile.tileInfo.layer) != null && GetTileByCoord(tile.tileInfo.x, tile.tileInfo.y + 1, tile.tileInfo.layer) != null)
+        {
 
         }
-
-    }
-    void SetMaterial(MeshRenderer mesh,Material mat)
-    {
-        mesh.material = mat;
-    }
-
-    int GetRandomMaterialNumber()
-    {
-        return Random.Range(0, materials.Count);
-    }
-    public void TileSelected(Tile tile)
-    {
         if (prevSelectedTile == null)
         {
             
@@ -139,83 +95,117 @@ public class BoardManager : MonoBehaviour
     }
     void Matched(Tile tile1,Tile tile2)
     {
-        //print(tile1.tileInfo.matchId);
-        //print(tile2.tileInfo.matchId);
-        print(tile1.tileInfo.layer);
-        print(tile2.tileInfo.layer);
-        prevSelectedTile = null;
+        
+               prevSelectedTile = null;
         Destroy(tile1.gameObject);
         Destroy(tile2.gameObject);
+    }
+    TileInfo GetTileByCoord(int x,int y,int depth)
+    {
+        try
+        {
+            return grid.depth[depth].columns[x].tiles[y];
+        }
+        catch (System.Exception)
+        {
+
+            return null;        }
+        
     }
 }
 
 
 [System.Serializable]
-public class Row
+public class X
 {
-    public Row(){
+    public X(){
     }
    [field: SerializeField] public GameObject tile;
 }
 [System.Serializable]
 
-public class Column
+public class Y
 {
-    public Column(int rowAmount)
+    public Y(int rowAmount)
     {
-        rows = new Row[rowAmount];
+        x = new X[rowAmount];
         for (int i = 0; i < rowAmount; i++)
         {
-            rows[i] = new Row();
+            x[i] = new X();
         }
     }
-   [field: SerializeField] public Row[] rows;
+   [field: SerializeField] public X[] x;
 }
 [System.Serializable]
 
 public class Layer
 {
 
-    public Layer(int columnAmount,int rowAmount)
+    public Layer(int yAmount,int xAmount)
     {
-        columns = new Column[columnAmount];
-        for (int i = 0; i < columnAmount; i++)
+        y = new Y[yAmount];
+        for (int i = 0; i < yAmount; i++)
         {
-            columns[i] = new Column(rowAmount);
+            y[i] = new Y(xAmount);
         }
     }
 
-   [field: SerializeField]public Column[] columns;
+   [field: SerializeField]public Y[] y;
 }
 [System.Serializable]
 public class Table
 {
     [field:SerializeField]public Layer[] layers;
-    public Table(int layerAmount,int columnAmount,int rowAmount)
+    public Table(int layerAmount,int yAmount,int xAmount)
     {
         layers = new Layer[layerAmount];
         for (int i = 0; i < layerAmount; i++)
         {
-            layers[i] = new Layer(columnAmount,rowAmount);
+            layers[i] = new Layer(yAmount, xAmount);
         }
     }
-}[System.Serializable]
+}
+[System.Serializable]
 public class TileInfo
 {
     [field:SerializeField]public int id;
     [field:SerializeField]public int matchId;
-    [field:SerializeField]public int row;
-    [field:SerializeField]public int column;
+    [field:SerializeField]public int x;
+    [field:SerializeField]public int y;
     [field:SerializeField]public int layer;
+    public Piece pieceType;
     public void SetIds(int id,int matchId)
     {
         this.id = id;
         this.matchId = matchId;
     }
-    public TileInfo( int row, int column,int layer)
+    public TileInfo( int x, int y,int layer,int id,int matchId)
     {
-        this.row = row;
-        this.column = column;
+        this.x = x;
+        this.y = y;
         this.layer = layer;
+        this.matchId = matchId;
+        this.id = id;
     }
+}
+[System.Serializable]
+public class Grid
+{
+    public Depth[] depth;
+    
+
+}
+[System.Serializable ]
+public class Depth
+{
+    public Column[] columns;
+}
+[System.Serializable]
+public class Column
+{
+    public TileInfo[] tiles;
+}
+public enum Piece
+{
+    none,A
 }
