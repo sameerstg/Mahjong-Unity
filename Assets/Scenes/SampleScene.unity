@@ -399,6 +399,7 @@ MonoBehaviour:
   y: 3
   layers: 1
   gap: 0.01
+  prevSelectedTile: {fileID: 0}
   grid:
     depth:
     - columns:
@@ -544,12 +545,6 @@ MonoBehaviour:
           layer: 0
           pieceType: 0
       - tiles:
-        - id: 0
-          matchId: 0
-          x: 0
-          y: 0
-          layer: 0
-          pieceType: 0
         - id: 0
           matchId: 0
           x: 0
@@ -789,3 +784,5 @@ MonoBehaviour:
           layer: 0
           pieceType: 0
   piecesParent: {fileID: 919132149155446097, guid: 6c7ab36ed23f108428951ead1bf15e6f, type: 3}
+  meshMaterial: {fileID: -3846018093981099296, guid: 6c7ab36ed23f108428951ead1bf15e6f, type: 3}
+  selectedMeshMaterial: {fileID: 2100000, guid: c2925afb9bfb1324090c1704a2699eb0, type: 2}

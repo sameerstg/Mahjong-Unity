@@ -15,6 +15,8 @@ public class BoardManager : MonoBehaviour
     public Tile prevSelectedTile;
     public Grid grid;
     public GameObject piecesParent;
+    public Material meshMaterial;
+    public Material selectedMeshMaterial;
     
     private void Awake()
     {
@@ -62,6 +64,7 @@ public class BoardManager : MonoBehaviour
                     GameObject tile = Instantiate(piecesParent.transform.GetChild(matchId).gameObject, firstTrans, Quaternion.identity,transform.GetChild(0));
                     tile.name = $"x = {k} , y = {j} , z = {i}";
                     Tile tileScript = tile.AddComponent<Tile>();
+                    
                     tileScript.tileInfo = new TileInfo(k, j, i,id,matchId);
                     id++;
                     tile.AddComponent<BoxCollider>();
@@ -71,17 +74,46 @@ public class BoardManager : MonoBehaviour
             }
    
     
-       public void TileSelected(Tile tile)
+    bool CanSelect(Tile tile)
     {
-        Debug.Log("clicked");
-        if (GetTileByCoord(tile.tileInfo.x,tile.tileInfo.y-1,tile.tileInfo.layer) != null && GetTileByCoord(tile.tileInfo.x, tile.tileInfo.y + 1, tile.tileInfo.layer) != null)
+        try
+        {
+            if (GetTileByCoord(tile.tileInfo.x, tile.tileInfo.y - 1, tile.tileInfo.layer) == null)
+            {
+                return true;
+
+            }
+            if (GetTileByCoord(tile.tileInfo.x, tile.tileInfo.y + 1, tile.tileInfo.layer) == null)
+            {
+                return true;
+            }
+        }
+        catch (System.Exception)
         {
 
+            return true;    
         }
+        return false;
+        
+    }
+       public void TileSelected(Tile tile)
+    {
+        if (!CanSelect(tile))
+        {
+            return;
+        }
+        Debug.Log(tile.tileInfo.matchId);
+        
         if (prevSelectedTile == null)
         {
             
             prevSelectedTile = tile;
+                       //mats[2] = selectedMeshMaterial;
+            foreach (var item in tile.GetComponent<MeshRenderer>().materials)
+            {
+                item.color = Color.yellow;
+            }
+                        
             return;
         }
         if (tile.tileInfo.matchId == prevSelectedTile.tileInfo.matchId && prevSelectedTile.tileInfo.id != tile.tileInfo.id)
@@ -90,6 +122,14 @@ public class BoardManager : MonoBehaviour
         }
         else
         {
+
+            foreach (var item in tile.GetComponent<MeshRenderer>().materials)
+            {
+                item.color = Color.yellow;
+            }foreach (var item in prevSelectedTile.GetComponent<MeshRenderer>().materials)
+            {
+                item.color = Color.white;
+            }
             prevSelectedTile = tile;
         }
     }

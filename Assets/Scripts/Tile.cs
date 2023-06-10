@@ -11,6 +11,7 @@ public class Tile : MonoBehaviour
     BoardManager bm;
     public TileInfo tileInfo;
     public MeshRenderer mesh;
+    
     private void Awake()
     {
         //mesh = GetComponent<MeshRenderer>();
