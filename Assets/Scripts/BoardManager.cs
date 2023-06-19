@@ -19,7 +19,9 @@ public class BoardManager : MonoBehaviour
     public Material selectedMeshMaterial;
     Vector3 size;
     GameObject Cube;
+    public List<TileInfo> allTileInfo = new();
     public List<TileInfo> clickable = new();
+    public List<TileInfo> matchable = new();
 
     private void Awake()
     {
@@ -78,40 +80,194 @@ public class BoardManager : MonoBehaviour
                     Tile tileScript = tile.AddComponent<Tile>();
 
                     
-                    tileScript.tileInfo = new TileInfo(k, j, i, id, matchId,tile);
+                    tileScript.tileInfo = new TileInfo(k, j, i, id, matchId,tile,firstTrans);
                     grid.depth[i].columns[j].tiles[k] = tileScript.tileInfo;
                    id++;
                     tile.AddComponent<BoxCollider>();
                 }
             }
         }
+        MakeSolvable();
+        PostMove();
         
     }
     int GetRandomMatchId()
     {
         return Random.Range(0, piecesParent.transform.childCount - 1);
     }
-    [ContextMenu("GetAllClickable")]
-    public void GetAllClickable()
+    public void GetAllTileInfos()
     {
-        clickable.Clear();
+        allTileInfo.Clear();
         foreach (var d in grid.depth)
         {
             foreach (var y in d.columns)
             {
                 foreach (var x in y.tiles)
                 {
-                    if (CanSelect(x))
+                    if (x.go != null)
                     {
-                        clickable.Add(x);
+                        allTileInfo.Add(x);
+
                     }
                     else
                     {
-                        Debug.Log("cant");
+                        Debug.LogError(x.go);
                     }
+
                 }
             }
         }
+    }
+    public void GetAllClickable()
+    {
+        clickable.Clear();
+        foreach (var item in allTileInfo)
+        {
+            if (CanSelect(item))
+            {
+                clickable.Add(item);
+                foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
+                {
+                    a.color = Color.red;
+                }
+            }
+        }
+           }
+    void MakeMatchable()
+    {
+        if (clickable.Count>=2)
+        {
+            TileInfo tile1 = clickable[Random.Range(0,clickable.Count)];
+            TileInfo tile2;
+
+            do
+            {
+             tile2 = clickable[Random.Range(0, clickable.Count)];
+
+            } while (tile1 == tile2);
+            tile2.matchId= tile1.matchId;
+            MakeGOAccordingToMatchid(tile2);
+        }
+    }
+    public void DestroyMatchable()
+    {
+                
+        Hashtable table = new();
+        foreach (var item in clickable)
+        {
+            if (table.Contains(item.matchId))
+            {
+                //Destroy()
+                allTileInfo.Remove((TileInfo)table[item.matchId]);
+                allTileInfo.Remove(item);
+
+                Destroy(((TileInfo)table[item.matchId]).go);
+                Destroy(item.go);
+                ((TileInfo)table[item.matchId]).go = null;
+                item.go = null;
+                matchable.Add(item);
+                table.Remove(item.matchId);
+                //GetTileInfo(item.x, item.y, item.layer);
+
+            }
+            else
+            {
+                table.Add(item.matchId, item);
+            }
+        }
+
+    }
+    
+        bool IsMatchingPossible()
+    {
+        List<int> matchIds = new();
+        foreach (var item in clickable)
+        {
+            if (matchIds.Exists(x=>x == item.matchId))
+            {
+                //Debug.LogError("match possible");
+                return true;
+            }
+            else
+            {
+
+                matchIds.Add(item.matchId);
+            }
+        }
+        return false;
+    }
+    [ContextMenu("Get all matachable")]
+    public void GetAllMatchable()
+    {
+
+
+        matchable.Clear();
+        Hashtable table = new();
+        foreach (var item in clickable)
+        {
+            if (table.Contains(item.matchId))
+            {
+                //Destroy()
+
+                matchable.Add(item);
+                matchable.Add((TileInfo)table[item.matchId]);
+                table.Remove(item.matchId);
+
+            }
+            else
+            {
+                table.Add(item.matchId, item);
+            }
+        }
+    }
+
+    [ContextMenu("MakeSolvable")]
+    public void MakeSolvable()
+    {
+        GetAllTileInfos();
+        while(allTileInfo.Count>0)
+        {
+            clickable.Clear();
+            matchable.Clear();
+            GetAllClickable();
+            MakeMatchable();
+            MakeMatchable();
+            MakeMatchable();
+            DestroyMatchable();
+        }
+
+        MakeGOForAllAccordingToMatchid();
+    }
+    public void MakeGOForAllAccordingToMatchid()
+    {
+        foreach (var d in grid.depth)
+        {
+            foreach (var c in d.columns)
+            {
+
+                foreach (var r in c.tiles)
+                {
+                    if (r.go!=null)
+                    {
+                        Destroy(r.go);
+                        r.go = null;
+                       
+                    }
+                    r.go = Instantiate(piecesParent.transform.GetChild(r.matchId).gameObject, r.worldPostion, Quaternion.identity, transform.GetChild(0));
+                    Tile tileScript = r.go.AddComponent<Tile>();
+                    tileScript.tileInfo = r;
+
+                    r.go.AddComponent<BoxCollider>();
+
+                }
+            }
+        }
+    } public void MakeGOAccordingToMatchid(TileInfo tile)
+    {
+                               Destroy(tile.go);
+                        tile.go = null;
+                        tile.go = Instantiate(piecesParent.transform.GetChild(tile.matchId).gameObject, tile.worldPostion, Quaternion.identity, transform.GetChild(0));
+                          
     }
     /// <summary>
     /// 
@@ -145,7 +301,7 @@ public class BoardManager : MonoBehaviour
             {
                 print("here");
 
-                if (GetTileInfoByCoord(tileInfo.x, tileInfo.y - 1, tileInfo.layer) == null)
+                if (GetGoByCoord(tileInfo.x, tileInfo.y - 1, tileInfo.layer) == null)
                 {
 
                     print("here");
@@ -157,9 +313,10 @@ public class BoardManager : MonoBehaviour
             {
                 print("here");
 
-                              
-                if ((tileInfo.x + 1>=GetTileXCount(tileInfo.y - 1, tileInfo.layer)|| GetTileInfoByCoord(tileInfo.x + 1, tileInfo.y - 1, tileInfo.layer) == null )
-                    && (GetTileInfoByCoord(tileInfo.x - 1, tileInfo.y - 1, tileInfo.layer) == null || tileInfo.y <0))
+                bool b2 = tileInfo.x-1 < 0;
+                
+                if ((tileInfo.x + 1>=GetTileXCount(tileInfo.y - 1, tileInfo.layer)|| GetGoByCoord(tileInfo.x + 1, tileInfo.y - 1, tileInfo.layer) == null )
+                    && (b2||GetGoByCoord(tileInfo.x - 1, tileInfo.y - 1, tileInfo.layer) == null  ))
                 {
                     print("here");
 
@@ -178,7 +335,7 @@ public class BoardManager : MonoBehaviour
             {
                 print("here");
 
-                if (GetTileInfoByCoord(tileInfo.x, tileInfo.y + 1, tileInfo.layer) == null)
+                if (GetGoByCoord(tileInfo.x, tileInfo.y + 1, tileInfo.layer) == null)
                 {
                     print("here");
 
@@ -188,9 +345,10 @@ public class BoardManager : MonoBehaviour
             else
             {
                 print("here");
+                bool b1 = (tileInfo.x + 1 >= GetTileXCount(tileInfo.y + 1, tileInfo.layer));
 
-                if ((tileInfo.x + 1 >= GetTileXCount(tileInfo.y + 1, tileInfo.layer)||GetTileInfoByCoord(tileInfo.x + 1, tileInfo.y + 1, tileInfo.layer) == null )
-                    && (tileInfo.x < 0||GetTileInfoByCoord(tileInfo.x - 1, tileInfo.y + 1, tileInfo.layer) == null ))
+                if ((b1||GetGoByCoord(tileInfo.x + 1, tileInfo.y + 1, tileInfo.layer) == null )
+                    && (tileInfo.x < 0||GetGoByCoord(tileInfo.x - 1, tileInfo.y + 1, tileInfo.layer) == null ))
                 {
                     print("here");
 
@@ -209,7 +367,11 @@ public class BoardManager : MonoBehaviour
     }
     public void TileSelected(Tile tile)
     {
-        if (!CanSelect(tile.tileInfo))
+        Debug.LogError(CanSelect(tile.tileInfo));
+        Debug.LogError(GetGoByCoord(tile));
+        
+       
+        if (!clickable.Contains(tile.tileInfo))
         {
             return;
         }
@@ -246,30 +408,69 @@ public class BoardManager : MonoBehaviour
     }
     void Matched(Tile tile1, Tile tile2)
     {
+        foreach (var depth in grid.depth)
+        {
+            foreach (var col in depth.columns)
+            {
+
+                foreach (var row in col.tiles)
+                {
+
+                    if (row == tile1.tileInfo || row == tile2.tileInfo)
+                    {
+                        row.go = null;
+                    }
+                }
+            }
+        }
 
         prevSelectedTile = null;
         Destroy(tile1.gameObject);
         Destroy(tile2.gameObject);
-        for (int i = 0; i < grid.depth.Length; i++)
-        {
-            for (int j  = 0; j< grid.depth[i].columns.Length; j++)
-            {
-                for (int k = 0; k < grid.depth[i].columns[j].tiles.Length; k++)
-                {
-                    if (grid.depth[i].columns[j].tiles[j] == tile1.tileInfo|| grid.depth[i].columns[j].tiles[j] == tile2.tileInfo)
-                    {
-                        grid.depth[i].columns[j].tiles[j].go = null;
-                    }
-                    
-                }
-            }
-        }
-           }
-    GameObject GetTileInfoByCoord(int x, int y, int depth)
+
+        //for (int i = 0; i < grid.depth.Length; i++)
+        //{
+        //    for (int j = 0; j < grid.depth[i].columns.Length; j++)
+        //    {
+        //        for (int k = 0; k < grid.depth[i].columns[j].tiles.Length; k++)
+        //        {
+        //            if (grid.depth[i].columns[j].tiles[j] == tile1.tileInfo || grid.depth[i].columns[j].tiles[j] == tile2.tileInfo)
+        //            {
+        //                grid.depth[i].columns[j].tiles[j].go = null;
+        //                Debug.LogError("null");
+        //            }
+
+        //        }
+        //    }
+        //}
+        
+        PostMove();
+    }
+
+    void PostMove()
     {
-        Debug.Log($"{x},{y},{depth}");
+        GetAllTileInfos();
+        GetAllClickable();
+        if (!IsMatchingPossible())
+        {
+            Debug.LogError("Match not possible");
+        }
+        else
+        {
+            GetAllMatchable();
+        }
+    }
+       GameObject GetGoByCoord(int x, int y, int depth)
+    {
+        //Debug.LogError($"row {x} ,column {y}, depth {depth}");
         Debug.Log(grid.depth[depth].columns[y].tiles[x].go);
         return grid.depth[depth].columns[y].tiles[x].go;
+
+    } GameObject GetGoByCoord(Tile tile)
+    {
+        Debug.LogError($"row {tile.tileInfo.x}, column {tile.tileInfo.y}, depth {tile.tileInfo.layer}");
+        Debug.Log(grid.depth[tile.tileInfo.layer].columns[tile.tileInfo.y].tiles[tile.tileInfo.x].go);
+        return grid.depth[tile.tileInfo.layer].columns[tile.tileInfo.y].tiles[tile.tileInfo.x].go;
 
     } }
 
@@ -334,13 +535,14 @@ public class TileInfo
     [field: SerializeField] public int y;
     [field: SerializeField] public int layer;
     [field: SerializeField] public GameObject go;
+    [field: SerializeField] public Vector3 worldPostion;
     public Piece pieceType;
     public void SetIds(int id, int matchId)
     {
         this.id = id;
         this.matchId = matchId;
     }
-    public TileInfo(int x, int y, int layer, int id, int matchId,GameObject go)
+    public TileInfo(int x, int y, int layer, int id, int matchId,GameObject go,Vector3 worldPostion)
     {
         this.x = x;
         this.y = y;
@@ -348,6 +550,7 @@ public class TileInfo
         this.matchId = matchId;
         this.id = id;
         this.go = go;
+        this.worldPostion = worldPostion;
     }
 }
 [System.Serializable]
