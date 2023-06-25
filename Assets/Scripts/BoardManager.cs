@@ -22,6 +22,7 @@ public class BoardManager : MonoBehaviour
     public List<TileInfo> allTileInfo = new();
     public List<TileInfo> clickable = new();
     public List<TileInfo> matchable = new();
+    public string selectedTileIndex;
 
     private void Awake()
     {
@@ -54,7 +55,7 @@ public class BoardManager : MonoBehaviour
         {
             foreach (var item2 in item.columns)
             {
-                sum += item2.tiles.Length;
+                sum += item2.tiles.Count;
             }
         }
         if (sum % 2 != 0)
@@ -70,17 +71,17 @@ public class BoardManager : MonoBehaviour
             for (int j = 0; j < grid.depth[i].columns.Length; j++)
             {
 
-                for (int k = 0; k < grid.depth[i].columns[j].tiles.Length; k++)
+                for (int k = 0; k < grid.depth[i].columns[j].tiles.Count; k++)
                 {
 
                     Vector3 firstTrans = GetWorldPostion(k, j, i);
                     int matchId = GetRandomMatchId();
                     GameObject tile = Instantiate(piecesParent.transform.GetChild(matchId).gameObject, firstTrans, Quaternion.identity, transform.GetChild(0));
-                    tile.name = $"x = {k} , y = {j} , z = {i}";
+                    tile.name = $"x = {grid.depth[i].columns[j].tiles.Count / 2 - k} , y = {j} , z = {i}";
                     Tile tileScript = tile.AddComponent<Tile>();
 
                     
-                    tileScript.tileInfo = new TileInfo(k, j, i, id, matchId,tile,firstTrans);
+                    tileScript.tileInfo = new TileInfo(grid.depth[i].columns[j].tiles.Count / 2 - k, j, i, id, matchId,tile,firstTrans);
                     grid.depth[i].columns[j].tiles[k] = tileScript.tileInfo;
                    id++;
                     tile.AddComponent<BoxCollider>();
@@ -280,13 +281,13 @@ public class BoardManager : MonoBehaviour
     {
         Vector3 firstTrans = new Vector3();
         firstTrans.x = (((grid.depth[i].columns.Length - 1) * (-size.x)) / 2) + ((size.x + gap) * j);
-        firstTrans.y = ((grid.depth[i].columns[j].tiles.Length - 1) * (size.y) / 2) + ((-size.y - gap) * k);
+        firstTrans.y = ((grid.depth[i].columns[j].tiles.Count - 1) * (size.y) / 2) + ((-size.y - gap) * k);
         firstTrans.z = (((grid.depth.Length - 1) * (-size.z) / 2) + ((size.z + gap) * i));
         return firstTrans;
     }
     int GetTileXCount(int y, int depth)
     {
-        return grid.depth[depth].columns[y].tiles.Length;
+        return grid.depth[depth].columns[y].tiles.Count;
     }
     int GetTileYCount( int depth)
     {
@@ -294,13 +295,13 @@ public class BoardManager : MonoBehaviour
     }
     bool CanSelect(TileInfo tileInfo)
     {
-        if (tileInfo.y-1>=0)
+               if (tileInfo.y-1>=0)
         {
-            if (GetTileXCount(tileInfo.y, tileInfo.layer) % 2 == GetTileXCount(tileInfo.y - 1, tileInfo.layer)
-                        % 2)
+            if (GetTileXCount(tileInfo.y, tileInfo.layer)== GetTileXCount(tileInfo.y - 1, tileInfo.layer)
+                       )
             {
                 print("here");
-
+               
                 if (GetGoByCoord(tileInfo.x, tileInfo.y - 1, tileInfo.layer) == null)
                 {
 
@@ -312,16 +313,28 @@ public class BoardManager : MonoBehaviour
             else
             {
                 print("here");
-
-                bool b2 = tileInfo.x-1 < 0;
-                
-                if ((tileInfo.x + 1>=GetTileXCount(tileInfo.y - 1, tileInfo.layer)|| GetGoByCoord(tileInfo.x + 1, tileInfo.y - 1, tileInfo.layer) == null )
-                    && (b2||GetGoByCoord(tileInfo.x - 1, tileInfo.y - 1, tileInfo.layer) == null  ))
+                if (GetTileXCount(tileInfo.y, tileInfo.layer)%2==0)
                 {
-                    print("here");
+                    if ((GetGoByCoord(tileInfo.x - 1, tileInfo.y - 1, tileInfo.layer) == null)
+                                        && (GetGoByCoord(tileInfo.x, tileInfo.y - 1, tileInfo.layer) == null))
+                    {
+                        print("here");
 
-                    return true;
+                        return true;
+                    }
                 }
+                else
+                {
+                    if ((GetGoByCoord(tileInfo.x + 1, tileInfo.y - 1, tileInfo.layer) == null)
+                                                           && (GetGoByCoord(tileInfo.x, tileInfo.y - 1, tileInfo.layer) == null))
+                    {
+                        print("here");
+
+                        return true;
+                    }
+                }
+                               
+                
             }
         }
         else
@@ -330,11 +343,10 @@ public class BoardManager : MonoBehaviour
         }
         if (tileInfo.y+1<GetTileYCount(tileInfo.layer))
         {
-            if (GetTileXCount(tileInfo.y, tileInfo.layer) % 2 == GetTileXCount(tileInfo.y + 1, tileInfo.layer)
-                        % 2)
+            if (GetTileXCount(tileInfo.y, tileInfo.layer) == GetTileXCount(tileInfo.y + 1, tileInfo.layer))
             {
                 print("here");
-
+                               
                 if (GetGoByCoord(tileInfo.x, tileInfo.y + 1, tileInfo.layer) == null)
                 {
                     print("here");
@@ -344,16 +356,27 @@ public class BoardManager : MonoBehaviour
             }
             else
             {
-                print("here");
-                bool b1 = (tileInfo.x + 1 >= GetTileXCount(tileInfo.y + 1, tileInfo.layer));
-
-                if ((b1||GetGoByCoord(tileInfo.x + 1, tileInfo.y + 1, tileInfo.layer) == null )
-                    && (tileInfo.x < 0||GetGoByCoord(tileInfo.x - 1, tileInfo.y + 1, tileInfo.layer) == null ))
+                if (GetTileXCount(tileInfo.y, tileInfo.layer) %2==0)
                 {
-                    print("here");
+                    if ((GetGoByCoord(tileInfo.x - 1, tileInfo.y + 1, tileInfo.layer) == null)
+                                        && (GetGoByCoord(tileInfo.x, tileInfo.y + 1, tileInfo.layer) == null))
+                    {
+                        print("here");
 
-                    return true;
+                        return true;
+                    }
                 }
+                else
+                {
+                    if ((GetGoByCoord(tileInfo.x + 1, tileInfo.y + 1, tileInfo.layer) == null)
+                                                            && (GetGoByCoord(tileInfo.x, tileInfo.y + 1, tileInfo.layer) == null))
+                    {
+                        print("here");
+
+                        return true;
+                    }
+                }
+                
             }
         }
         else
@@ -462,16 +485,26 @@ public class BoardManager : MonoBehaviour
     }
        GameObject GetGoByCoord(int x, int y, int depth)
     {
-        //Debug.LogError($"row {x} ,column {y}, depth {depth}");
-        Debug.Log(grid.depth[depth].columns[y].tiles[x].go);
-        return grid.depth[depth].columns[y].tiles[x].go;
+        foreach (var item in grid.depth[depth].columns[y].tiles)
+        {
+            if (item.x == x && item.y == y && item.layer == depth)
+            {
+                return item.go;
+            }
+        }
+        return null;
 
     } GameObject GetGoByCoord(Tile tile)
     {
-        Debug.LogError($"row {tile.tileInfo.x}, column {tile.tileInfo.y}, depth {tile.tileInfo.layer}");
-        Debug.Log(grid.depth[tile.tileInfo.layer].columns[tile.tileInfo.y].tiles[tile.tileInfo.x].go);
-        return grid.depth[tile.tileInfo.layer].columns[tile.tileInfo.y].tiles[tile.tileInfo.x].go;
-
+        foreach (var item in grid.depth[tile.tileInfo.layer].columns[tile.tileInfo.y].tiles)
+        {
+            if (item.x == tile.tileInfo.x && item.y == tile.tileInfo.x && item.layer == tile.tileInfo.layer)
+            {
+                return item.go;
+            }
+        }
+        return null;
+        
     } }
 
 
@@ -568,7 +601,7 @@ public class Depth
 [System.Serializable]
 public class Column
 {
-    public TileInfo[] tiles;
+    public List<TileInfo> tiles;
 }
 public enum Piece
 {

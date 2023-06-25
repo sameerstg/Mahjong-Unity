@@ -31,4 +31,8 @@ public class Tile : MonoBehaviour
 /*        print(matchId);
 */
     }
+    private void OnMouseEnter()
+    {
+        BoardManager._instance.selectedTileIndex = $"{tileInfo.x},{tileInfo.y},{tileInfo.layer}";
+    }
 }
