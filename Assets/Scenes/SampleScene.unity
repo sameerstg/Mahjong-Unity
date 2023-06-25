@@ -574,22 +574,6 @@ MonoBehaviour:
           go: {fileID: 0}
           worldPostion: {x: 0, y: 0, z: 0}
           pieceType: 0
-        - id: 0
-          matchId: 0
-          x: 0
-          y: 0
-          layer: 0
-          go: {fileID: 0}
-          worldPostion: {x: 0, y: 0, z: 0}
-          pieceType: 0
-        - id: 0
-          matchId: 0
-          x: 0
-          y: 0
-          layer: 0
-          go: {fileID: 0}
-          worldPostion: {x: 0, y: 0, z: 0}
-          pieceType: 0
       - tiles:
         - id: 0
           matchId: 0
@@ -913,3 +897,4 @@ MonoBehaviour:
   allTileInfo: []
   clickable: []
   matchable: []
+  selectedTileIndex: 

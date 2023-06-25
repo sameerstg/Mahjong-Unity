@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class BoardManager : MonoBehaviour
@@ -94,7 +96,16 @@ public class BoardManager : MonoBehaviour
     }
     int GetRandomMatchId()
     {
-        return Random.Range(0, piecesParent.transform.childCount - 1);
+        do
+        {
+            var a = UnityEngine.Random.Range(0, piecesParent.transform.childCount - 1);
+           /* if (a != 1)
+            {
+*/
+                return a;
+            /*} */
+        } while (true);
+        
     }
     public void GetAllTileInfos()
     {
@@ -127,25 +138,96 @@ public class BoardManager : MonoBehaviour
             if (CanSelect(item))
             {
                 clickable.Add(item);
-                foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
+                /*foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
                 {
                     a.color = Color.red;
-                }
+                }*/
             }
         }
            }
+    public void ColorList(List<TileInfo> tileInfos)
+    {
+        foreach (var item in tileInfos)
+        {
+            if (item.go != null)
+            {
+            foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
+            {
+                a.color = Color.red;
+            }
+                
+            }
+        }
+        
+    }
+
+    int GetTileCount(int matchId)
+    {
+        int count = 0;
+        foreach (var item in clickable)
+        {
+            if (item.matchId == matchId)
+            { 
+                count++;
+            }
+        }
+        return count;
+    }
+    [ContextMenu("print match ids count")]
+    public void PrintIdsCount()
+    {
+        GetAllTileInfos();
+        var a = GetLeastAndHighestAmountOfMatchid();
+        print(a.Item1 + " " + a.Item2);
+    }
+    Tuple<int,int> GetLeastAndHighestAmountOfMatchid()
+    {
+        GetAllTileInfos();
+        int highest = -1, lowest = 999;
+        if (allTileInfo.Count>0)
+        {
+            Dictionary<int, int> dic = new();
+            foreach (var item in allTileInfo)
+            {
+                if (dic.ContainsKey(item.matchId))
+                {
+                    dic[item.matchId]++;
+                    Debug.LogError(dic[item.matchId]);
+                }
+                else
+                {
+                    dic.Add(item.matchId, 1);
+                }
+                if (dic[item.matchId] > highest)
+                {
+                    highest = dic[item.matchId];
+                }
+                if (dic[item.matchId] < lowest)
+                {
+                    lowest = dic[item.matchId];
+                }
+            }
+        }
+        
+        return new Tuple<int, int>(lowest, highest);
+
+
+    }
+    
     void MakeMatchable()
     {
         if (clickable.Count>=2)
         {
-            TileInfo tile1 = clickable[Random.Range(0,clickable.Count)];
+            TileInfo tile1 = clickable[UnityEngine.Random.Range(0,clickable.Count)];
+            
             TileInfo tile2;
 
             do
             {
-             tile2 = clickable[Random.Range(0, clickable.Count)];
+                tile2 = clickable[UnityEngine.Random.Range(0, clickable.Count)];
 
             } while (tile1 == tile2);
+            //tile1.matchId = GetLeastAndHighestAmountOfMatchid().Item1;
             tile2.matchId= tile1.matchId;
             MakeGOAccordingToMatchid(tile2);
         }
@@ -231,6 +313,8 @@ public class BoardManager : MonoBehaviour
             clickable.Clear();
             matchable.Clear();
             GetAllClickable();
+            MakeMatchable();
+            MakeMatchable();
             MakeMatchable();
             MakeMatchable();
             MakeMatchable();
@@ -477,11 +561,14 @@ public class BoardManager : MonoBehaviour
         if (!IsMatchingPossible())
         {
             Debug.LogError("Match not possible");
+            SceneManager.LoadScene(0);
         }
         else
         {
             GetAllMatchable();
         }
+
+        ColorList(matchable);
     }
        GameObject GetGoByCoord(int x, int y, int depth)
     {
