@@ -42,18 +42,34 @@ public class BoardManager : MonoBehaviour
         GenerateBoard();
 
     }
+    [ContextMenu("Solve")]
+    void Solve()
+    {
+        StartCoroutine(SolveC());
+    }
+    IEnumerator SolveC()
+    {
+        while (ContainGo(allTileInfo))
+        {
+            yield return new WaitForSeconds(0f);
+            var two = GetTwoMatchable();
 
+            if (two.Count==2)
+            {
+                TileSelected(two[0].go.GetComponent<Tile>());
+                yield return new WaitForSeconds(0f);
+                TileSelected(two[1].go.GetComponent<Tile>());
+
+            }
+        }
+    }
     public void GenerateBoard()
     {
 
         allTileInfo.Clear();
 
 
-        /* if (Mathf.Pow(columns * rows, layers) % 4 != 0)
-         {
-             return;
-         }*/
-        int sum = 0;
+              int sum = 0;
         foreach (var item in grid.depth)
         {
             foreach (var item2 in item.columns)
@@ -92,12 +108,7 @@ public class BoardManager : MonoBehaviour
                 }
             }
         }
-        //if (allTileInfo.Count%2!=0)
-        //{
-        //    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-        //}
-        //print(allTileInfo.Count);
-        MakeSolvable();
+               MakeSolvable();
         PostMove();
 
     }
@@ -114,6 +125,10 @@ public class BoardManager : MonoBehaviour
         } while (a==1);
                 return a;
         
+    }
+    bool ContainGo(List<TileInfo> tiles)
+    {
+        return tiles.Exists(x => x.go );
     }
     public void GetAllTileInfos()
     {
@@ -153,16 +168,30 @@ public class BoardManager : MonoBehaviour
         }
         return tiles;
            }
-    public void ColorList(List<TileInfo> tileInfos)
+    public void ColorList(List<TileInfo> tileInfos,Color color)
     {
-        foreach (var item in tileInfos)
+        foreach (var item in allTileInfo)
         {
             if (item.go != null)
             {
-            foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
-            {
-                a.color = Color.red;
-            }
+                
+                if (tileInfos.Contains(item))
+                {
+                    foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
+                    {
+
+                        a.color = color;
+                    }
+                }
+                else
+                {
+                    foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
+                    {
+
+                        a.color = Color.white;
+                    }
+                }
+           
                 
             }
         }
@@ -304,6 +333,33 @@ public class BoardManager : MonoBehaviour
         return matches;
     }
 
+    List<TileInfo> GetTwoMatchable()
+    {
+        List<TileInfo> matches = new();
+        var clicks = GetAllClickable();
+
+        matchable.Clear();
+        Hashtable table = new();
+        foreach (var item in clicks)
+        {
+            if (table.Contains(item.matchId))
+            {
+                //Destroy()
+
+                matches.Add(item);
+                matches.Add((TileInfo)table[item.matchId]);
+                table.Remove(item.matchId);
+                return matches;
+
+            }
+            else
+            {
+                table.Add(item.matchId, item);
+            }
+        }
+        return matches;
+
+    }
     [ContextMenu("MakeSolvable")]
     public void MakeSolvable()
     {
@@ -324,7 +380,7 @@ public class BoardManager : MonoBehaviour
                 Debug.LogError(allTileInfo.Count);
                 break;
             }
-            for (int i = 0; i < grid.depth.Length*3; i++)
+            for (int i = 0; i < grid.depth.Length*6; i++)
             {
                                MakeMatchable();
             }
@@ -338,12 +394,6 @@ public class BoardManager : MonoBehaviour
     }
     public void MakeGOForAllAccordingToMatchid()
     {
-
-        //foreach (var d in grid.depth)
-        //{
-        //    foreach (var c in d.columns)
-        //    {
-
         
                 foreach (var r in allTileInfo)
                 {
@@ -359,12 +409,9 @@ public class BoardManager : MonoBehaviour
                     tileScript.tileInfo = r;
 
                     r.go.AddComponent<BoxCollider>();
-                    //allTileInfo.Add(tileScript.tileInfo);
 
                 }
-        //    }
-        //}
-    } public void MakeGOAccordingToMatchid(TileInfo tile)
+          } public void MakeGOAccordingToMatchid(TileInfo tile)
     {
                                Destroy(tile.go);
                         tile.go = null;
@@ -470,7 +517,7 @@ public class BoardManager : MonoBehaviour
     {
         if (tileInfo.y - 1 >= 0)
         {
-            if (GetTileXCount(tileInfo.y, tileInfo.layer) == GetTileXCount(tileInfo.y - 1, tileInfo.layer)
+            if (GetTileXCount(tileInfo.y, tileInfo.layer)%2 == GetTileXCount(tileInfo.y - 1, tileInfo.layer) % 2
                        )
             {
                 print("here");
@@ -516,7 +563,7 @@ public class BoardManager : MonoBehaviour
         }
         if (tileInfo.y+1<GetTileYCount(tileInfo.layer))
         {
-            if (GetTileXCount(tileInfo.y, tileInfo.layer) == GetTileXCount(tileInfo.y + 1, tileInfo.layer))
+            if (GetTileXCount(tileInfo.y, tileInfo.layer)%2 == GetTileXCount(tileInfo.y + 1, tileInfo.layer) % 2)
             {
                 print("here");
                                
@@ -563,9 +610,7 @@ public class BoardManager : MonoBehaviour
     }
     public void TileSelected(Tile tile)
     {
-        Debug.LogError(CanSelect(tile.tileInfo));
-        Debug.LogError(GetGoByCoord(tile));
-        
+        Debug.Log(CanSelect(tile.tileInfo));
        
         if (!clickable.Contains(tile.tileInfo))
         {
@@ -624,22 +669,7 @@ public class BoardManager : MonoBehaviour
         Destroy(tile1.gameObject);
         Destroy(tile2.gameObject);
 
-        //for (int i = 0; i < grid.depth.Length; i++)
-        //{
-        //    for (int j = 0; j < grid.depth[i].columns.Length; j++)
-        //    {
-        //        for (int k = 0; k < grid.depth[i].columns[j].tiles.Length; k++)
-        //        {
-        //            if (grid.depth[i].columns[j].tiles[j] == tile1.tileInfo || grid.depth[i].columns[j].tiles[j] == tile2.tileInfo)
-        //            {
-        //                grid.depth[i].columns[j].tiles[j].go = null;
-        //                Debug.LogError("null");
-        //            }
-
-        //        }
-        //    }
-        //}
-        
+              
         PostMove();
     }
 
@@ -661,7 +691,7 @@ public class BoardManager : MonoBehaviour
            matchable= GetAllMatchable();
         }
 
-        ColorList(clickable);
+        ColorList(clickable,Color.red);
     }
        GameObject GetGoByCoord(int x, int y, int depth)
     {
