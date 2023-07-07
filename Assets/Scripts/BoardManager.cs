@@ -232,59 +232,83 @@ public class BoardManager : MonoBehaviour
 
     }
     
-    void MakeMatchable()
+    void MakeMatchable(int amount)
     {
-        if (clickable.Count>=2)
+        List<TileInfo> matchable = GetAllMatchable();
+        if (matchable.Count >= amount)
         {
-            TileInfo tile1 = clickable[UnityEngine.Random.Range(0,clickable.Count)];
-            clickable.Remove(tile1);
-
-            TileInfo tile2 = clickable[UnityEngine.Random.Range(0, clickable.Count)];
-
-            clickable.Remove(tile2);
-            allTileInfo.Remove(tile1);
-            allTileInfo.Remove(tile2);
-            //do
-            //{
-            //    tile2 = clickable[UnityEngine.Random.Range(0, clickable.Count)];
-
-            //} while (tile1 == tile2);
-            //tile1.matchId = GetLeastAndHighestAmountOfMatchid().Item1;
-            tile2.matchId= tile1.matchId;
-            Destroy(tile1.go);   
-            Destroy(tile2.go);
-            tile1.go = null;
-            tile2.go = null;
-           
+            return;
         }
+        clickable = GetAllClickable();
+        if (amount<=clickable.Count)
+        {
+            for (int i = 0; i < amount/2; i++)
+            {
+                clickable = GetAllClickable();
+
+                if (matchable.Count >= amount)
+                {
+                    break;
+                }
+                else if(clickable.Count>=2)
+                {
+                   var a= clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go!=null);
+                    matchable.Add(a);
+                    var b = clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go!=null);
+                    b.matchId = a.matchId;
+                    matchable.Add(b);
+                }
+
+            }
+        }
+        else if (amount>clickable.Count)
+        {
+            for (int i = 0; i < clickable.Count/2; i++)
+            {
+                clickable = GetAllClickable();
+
+                if (matchable.Count >= amount)
+                {
+                    break;
+                }
+                else if(clickable.Count>=2)
+                {
+                    var a = clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go != null);
+                    matchable.Add(a);
+                    var b = clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go != null);
+                    b.matchId = a.matchId;
+                    matchable.Add(b);
+                }
+            }
+        }
+
+
+        Debug.Log(matchable.Count);
+        //if (clickable.Count>=2)
+        //{
+
+        //    TileInfo tile1 = clickable[UnityEngine.Random.Range(0, clickable.Count)];
+        //    clickable.Remove(tile1);
+
+        //    TileInfo tile2 = clickable[UnityEngine.Random.Range(0, clickable.Count)];
+
+        //    clickable.Remove(tile2);
+
+        //    tile2.matchId = tile1.matchId;
+        //    Destroy(tile1.go);
+        //    Destroy(tile2.go);
+        //    tile1.go = null;
+        //    tile2.go = null;
+        //}
     }
     public void DestroyMatchable()
     {
-                
-        Hashtable table = new();
-        foreach (var item in clickable)
+
+        foreach (var item in GetAllMatchable())
         {
-            if (table.Contains(item.matchId))
-            {
-                //Destroy()
-                allTileInfo.Remove((TileInfo)table[item.matchId]);
-                allTileInfo.Remove(item);
-
-                Destroy(((TileInfo)table[item.matchId]).go);
-                Destroy(item.go);
-                ((TileInfo)table[item.matchId]).go = null;
-                item.go = null;
-                matchable.Add(item);
-                table.Remove(item.matchId);
-                //GetTileInfo(item.x, item.y, item.layer);
-
-            }
-            else
-            {
-                table.Add(item.matchId, item);
-            }
+            Destroy(item.go);
+            item.go = null;
         }
-
     }
     
         bool IsMatchingPossible()
@@ -360,19 +384,18 @@ public class BoardManager : MonoBehaviour
         return matches;
 
     }
-    [ContextMenu("MakeSolvable")]
     public void MakeSolvable()
     {
-        //GetAllTileInfos();
-        List<TileInfo> all  = new();
-        all.AddRange(allTileInfo);
 
-        Debug.Log(all.Count);
-        while(allTileInfo.Count>0 )
+        StartCoroutine(MakeSolvableD());
+       
+    }
+    IEnumerator MakeSolvableD()
+    {
+        while (ContainGo(allTileInfo))
         {
-            //clickable.Clear();
-            //matchable.Clear();
-             clickable.AddRange(GetAllClickable());
+            clickable.Clear();
+            clickable.AddRange( GetAllClickable());
             if (clickable.Count == 0)
             {
 
@@ -380,16 +403,14 @@ public class BoardManager : MonoBehaviour
                 Debug.LogError(allTileInfo.Count);
                 break;
             }
-            for (int i = 0; i < grid.depth.Length*6; i++)
-            {
-                               MakeMatchable();
-            }
-            
-                       //DestroyMatchable();
+            MakeMatchable(6);
+            matchable = GetAllMatchable();
+            ColorList(matchable, Color.cyan);
+            yield return new WaitForSeconds(3);
+            DestroyMatchable();
+
+
         }
-        Debug.Log(all.Count);
-        allTileInfo.Clear();
-        allTileInfo.AddRange(all);
         MakeGOForAllAccordingToMatchid();
     }
     public void MakeGOForAllAccordingToMatchid()
