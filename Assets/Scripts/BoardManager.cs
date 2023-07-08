@@ -22,6 +22,7 @@ public class BoardManager : MonoBehaviour
     Vector3 size;
     GameObject Cube;
     public List<TileInfo> allTileInfo = new();
+    public int totalPieceCount;
     public List<TileInfo> clickable = new();
     public List<TileInfo> matchable = new();
     public string selectedTileIndex;
@@ -51,13 +52,13 @@ public class BoardManager : MonoBehaviour
     {
         while (ContainGo(allTileInfo))
         {
-            yield return new WaitForSeconds(0f);
+            yield return new WaitForSeconds(.1f);
             var two = GetTwoMatchable();
 
-            if (two.Count==2)
+            if (two.Count == 2)
             {
                 TileSelected(two[0].go.GetComponent<Tile>());
-                yield return new WaitForSeconds(0f);
+                yield return new WaitForSeconds(.1f);
                 TileSelected(two[1].go.GetComponent<Tile>());
 
             }
@@ -66,10 +67,21 @@ public class BoardManager : MonoBehaviour
     public void GenerateBoard()
     {
 
+        StopCoroutine(nameof(MakeSolvableD));
+        if (allTileInfo.Count>0)
+        {
+            foreach (var item in allTileInfo)
+            {
+                if (IsGo(item))
+                {
+                    Destroy(item.go);
+                }
+            }
+        }
         allTileInfo.Clear();
 
 
-              int sum = 0;
+        int sum = 0;
         foreach (var item in grid.depth)
         {
             foreach (var item2 in item.columns)
@@ -99,16 +111,16 @@ public class BoardManager : MonoBehaviour
                     tile.name = $"x = {grid.depth[i].columns[j].tiles.Count / 2 - k} , y = {j} , z = {i}";
                     Tile tileScript = tile.AddComponent<Tile>();
 
-                    
-                    tileScript.tileInfo = new TileInfo(grid.depth[i].columns[j].tiles.Count / 2 - k, j, i, id, matchId,tile,firstTrans);
+
+                    tileScript.tileInfo = new TileInfo(grid.depth[i].columns[j].tiles.Count / 2 - k, j, i, id, matchId, tile, firstTrans);
                     grid.depth[i].columns[j].tiles[k] = tileScript.tileInfo;
-                   id++;
+                    id++;
                     tile.AddComponent<BoxCollider>();
                     allTileInfo.Add(tileScript.tileInfo);
                 }
             }
         }
-               MakeSolvable();
+        MakeSolvable();
         PostMove();
 
     }
@@ -117,18 +129,18 @@ public class BoardManager : MonoBehaviour
         int a;
         do
         {
-             a = UnityEngine.Random.Range(0, piecesParent.transform.childCount - 1);
-           /* if (a != 1)
-            {
-*/
+            a = UnityEngine.Random.Range(0, piecesParent.transform.childCount - 1);
+            /* if (a != 1)
+             {
+ */
             /*} */
-        } while (a==1);
-                return a;
-        
+        } while (a == 1);
+        return a;
+
     }
     bool ContainGo(List<TileInfo> tiles)
     {
-        return tiles.Exists(x => x.go );
+        return tiles.Exists(x => IsGo(x));
     }
     public void GetAllTileInfos()
     {
@@ -153,56 +165,55 @@ public class BoardManager : MonoBehaviour
         List<TileInfo> tiles = new();
         foreach (var item in allTileInfo)
         {
-            if (item.go ==null)
-            {
-                continue;
-            }
             if (CanSelect(item))
             {
+
                 tiles.Add(item);
                 /*foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
                 {
                     a.color = Color.red;
                 }*/
+
             }
+
         }
         return tiles;
-           }
-    public void ColorList(List<TileInfo> tileInfos,Color color)
+    }
+    public void ColorList(List<TileInfo> tileInfos)
     {
         foreach (var item in allTileInfo)
         {
-            if (item.go != null)
+            if (!IsGo(item))
             {
-                
-                if (tileInfos.Contains(item))
-                {
-                    foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
-                    {
-
-                        a.color = color;
-                    }
-                }
-                else
-                {
-                    foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
-                    {
-
-                        a.color = Color.white;
-                    }
-                }
-           
-                
+                continue;
             }
+            if (tileInfos.Contains(item))
+            {
+                foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
+                {
+
+                    a.color = Color.white;
+                }
+            }
+            else
+            {
+                foreach (var a in item.go.GetComponent<MeshRenderer>().materials)
+                {
+
+                    a.color = Color.gray;
+                }
+            }
+
+
         }
-        
+
     }
 
-    Tuple<int,int> GetLeastAndHighestAmountOfMatchid()
+    Tuple<int, int> GetLeastAndHighestAmountOfMatchid()
     {
-       /* GetAllTileInfos();*/
+        /* GetAllTileInfos();*/
         int highest = -1, lowest = 999;
-        if (allTileInfo.Count>0)
+        if (allTileInfo.Count > 0)
         {
             Dictionary<int, int> dic = new();
             foreach (var item in allTileInfo)
@@ -226,80 +237,97 @@ public class BoardManager : MonoBehaviour
                 }
             }
         }
-        
+
         return new Tuple<int, int>(lowest, highest);
 
 
     }
-    
+
     void MakeMatchable(int amount)
     {
-        List<TileInfo> matchable = GetAllMatchable();
+        clickable.Clear();
+        matchable.Clear();
+        matchable = GetAllMatchable();
+
         if (matchable.Count >= amount)
         {
             return;
         }
         clickable = GetAllClickable();
-        if (amount<=clickable.Count)
+        if (clickable.Count<=1)
         {
-            for (int i = 0; i < amount/2; i++)
-            {
-                clickable = GetAllClickable();
+            return;
+        }
+        if (amount < clickable.Count)
+        {
 
-                if (matchable.Count >= amount)
+
+
+            var tempClickable = GetAllClickable();
+
+            while (tempClickable.Count >= 2 && matchable.Count < amount)
+            {
+
+                TileInfo a, b;
+
+
+                a = tempClickable[0];
+
+
+
+                b = tempClickable[1];
+
+
+                if (a == null || b == null)
                 {
-                    break;
+                    continue;
                 }
-                else if(clickable.Count>=2)
-                {
-                   var a= clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go!=null);
-                    matchable.Add(a);
-                    var b = clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go!=null);
-                    b.matchId = a.matchId;
-                    matchable.Add(b);
-                }
+                tempClickable.Remove(a);
+                b.matchId = a.matchId;
+                matchable.Add(a);
+                tempClickable.Remove(b);
+                matchable.Add(b);
+
 
             }
         }
-        else if (amount>clickable.Count)
+        else if (amount >= clickable.Count)
         {
-            for (int i = 0; i < clickable.Count/2; i++)
-            {
-                clickable = GetAllClickable();
 
-                if (matchable.Count >= amount)
+
+            var tempClickable = GetAllClickable();
+
+
+
+            while (tempClickable.Count >= 2 && matchable.Count < amount)
+            {
+
+
+                TileInfo a, b;
+
+                a = tempClickable[0];
+                b = tempClickable[1];
+                if (a == null || b == null)
                 {
-                    break;
+                    continue;
                 }
-                else if(clickable.Count>=2)
-                {
-                    var a = clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go != null);
-                    matchable.Add(a);
-                    var b = clickable.Find(x => matchable.Find(y => y.matchId != x.matchId).go != null);
-                    b.matchId = a.matchId;
-                    matchable.Add(b);
-                }
+
+
+
+                b.matchId = a.matchId;
+                tempClickable.Remove(a);
+                tempClickable.Remove(b);
+                matchable.Add(a);
+                matchable.Add(b);
+
+
+
             }
         }
 
 
-        Debug.Log(matchable.Count);
-        //if (clickable.Count>=2)
-        //{
+        Debug.LogError(matchable.Count);
 
-        //    TileInfo tile1 = clickable[UnityEngine.Random.Range(0, clickable.Count)];
-        //    clickable.Remove(tile1);
-
-        //    TileInfo tile2 = clickable[UnityEngine.Random.Range(0, clickable.Count)];
-
-        //    clickable.Remove(tile2);
-
-        //    tile2.matchId = tile1.matchId;
-        //    Destroy(tile1.go);
-        //    Destroy(tile2.go);
-        //    tile1.go = null;
-        //    tile2.go = null;
-        //}
     }
     public void DestroyMatchable()
     {
@@ -309,14 +337,15 @@ public class BoardManager : MonoBehaviour
             Destroy(item.go);
             item.go = null;
         }
+        matchable.Clear();
     }
-    
-        bool IsMatchingPossible()
+
+    bool IsMatchingPossible()
     {
         List<int> matchIds = new();
         foreach (var item in clickable)
         {
-            if (matchIds.Exists(x=>x == item.matchId))
+            if (matchIds.Exists(x => x == item.matchId))
             {
                 //Debug.LogError("match possible");
                 return true;
@@ -334,12 +363,13 @@ public class BoardManager : MonoBehaviour
     {
 
         List<TileInfo> matches = new();
-       var clicks= GetAllClickable();
+        var clicks = GetAllClickable();
 
         matchable.Clear();
         Hashtable table = new();
         foreach (var item in clicks)
         {
+
             if (table.Contains(item.matchId))
             {
                 //Destroy()
@@ -388,14 +418,20 @@ public class BoardManager : MonoBehaviour
     {
 
         StartCoroutine(MakeSolvableD());
-       
+
     }
     IEnumerator MakeSolvableD()
     {
         while (ContainGo(allTileInfo))
         {
+
             clickable.Clear();
-            clickable.AddRange( GetAllClickable());
+            clickable.AddRange(GetAllClickable());
+            if (clickable.Count<=1)
+            {
+                GenerateBoard();
+                
+            }
             if (clickable.Count == 0)
             {
 
@@ -403,10 +439,20 @@ public class BoardManager : MonoBehaviour
                 Debug.LogError(allTileInfo.Count);
                 break;
             }
-            MakeMatchable(6);
+            Debug.ClearDeveloperConsole();
             matchable = GetAllMatchable();
-            ColorList(matchable, Color.cyan);
-            yield return new WaitForSeconds(3);
+            //Debug.LogError(" Clickable " + clickable.Count + " Matchable " + matchable.Count);
+            MakeMatchable(6);
+            clickable.Clear();
+            clickable.AddRange(GetAllClickable());
+            matchable.Clear();
+            matchable = GetAllMatchable();
+
+            //Debug.LogError(" Clickable " + clickable.Count + " Matchable " + matchable.Count);
+
+
+            ColorList(matchable);
+            yield return null;
             DestroyMatchable();
 
 
@@ -415,29 +461,31 @@ public class BoardManager : MonoBehaviour
     }
     public void MakeGOForAllAccordingToMatchid()
     {
-        
-                foreach (var r in allTileInfo)
-                {
-                    if (r.go!=null)
-                    {
-                        Destroy(r.go);
-                        r.go = null;
-                       
-                    }
-                    
-                    r.go = Instantiate(piecesParent.transform.GetChild(r.matchId).gameObject, r.worldPostion, Quaternion.identity, transform.GetChild(0));
-                    Tile tileScript = r.go.AddComponent<Tile>();
-                    tileScript.tileInfo = r;
 
-                    r.go.AddComponent<BoxCollider>();
+        foreach (var r in allTileInfo)
+        {
+            if (r.go != null)
+            {
+                Destroy(r.go);
+                r.go = null;
 
-                }
-          } public void MakeGOAccordingToMatchid(TileInfo tile)
+            }
+
+            r.go = Instantiate(piecesParent.transform.GetChild(r.matchId).gameObject, r.worldPostion, Quaternion.identity, transform.GetChild(0));
+            Tile tileScript = r.go.AddComponent<Tile>();
+            tileScript.tileInfo = r;
+
+            r.go.AddComponent<BoxCollider>();
+
+        }
+        PostMove();
+    }
+    public void MakeGOAccordingToMatchid(TileInfo tile)
     {
-                               Destroy(tile.go);
-                        tile.go = null;
-                        tile.go = Instantiate(piecesParent.transform.GetChild(tile.matchId).gameObject, tile.worldPostion, Quaternion.identity, transform.GetChild(0));
-                          
+        Destroy(tile.go);
+        tile.go = null;
+        tile.go = Instantiate(piecesParent.transform.GetChild(tile.matchId).gameObject, tile.worldPostion, Quaternion.identity, transform.GetChild(0));
+
     }
     /// <summary>
     /// 
@@ -458,7 +506,7 @@ public class BoardManager : MonoBehaviour
     {
         return grid.depth[depth].columns[y].tiles.Count;
     }
-    int GetTileYCount( int depth)
+    int GetTileYCount(int depth)
     {
         return grid.depth[depth].columns.Length;
     }
@@ -479,17 +527,17 @@ public class BoardManager : MonoBehaviour
             Debug.Log(" abs can");
             return true;
         }
-        if (tileInfo.layer+1 >= grid.depth.Length)
+        if (tileInfo.layer + 1 >= grid.depth.Length)
         {
             return false;
-            
+
 
         }
-        if (GetTileXCount(tileInfo.y,tileInfo.layer) == GetTileXCount(tileInfo.y, tileInfo.layer+1))
+        if (GetTileXCount(tileInfo.y, tileInfo.layer) == GetTileXCount(tileInfo.y, tileInfo.layer + 1))
         {
             Debug.Log("can");
 
-            if (GetGoByCoord(tileInfo.x,tileInfo.y,tileInfo.layer+1) == null)
+            if (GetGoByCoord(tileInfo.x, tileInfo.y, tileInfo.layer + 1) == null)
             {
                 Debug.Log("can");
 
@@ -500,11 +548,11 @@ public class BoardManager : MonoBehaviour
         {
             Debug.Log("can");
 
-            if (GetTileXCount(tileInfo.y, tileInfo.layer) %2 == 0)
+            if (GetTileXCount(tileInfo.y, tileInfo.layer) % 2 == 0)
             {
                 Debug.Log("can");
 
-                if (GetGoByCoord(tileInfo.x,tileInfo.y,tileInfo.layer+1) == null && GetGoByCoord(tileInfo.x-1, tileInfo.y, tileInfo.layer + 1) == null)
+                if (GetGoByCoord(tileInfo.x, tileInfo.y, tileInfo.layer + 1) == null && GetGoByCoord(tileInfo.x - 1, tileInfo.y, tileInfo.layer + 1) == null)
                 {
                     Debug.Log("can");
 
@@ -522,7 +570,7 @@ public class BoardManager : MonoBehaviour
                     return true;
                 }
             }
-            
+
         }
         Debug.Log("can");
 
@@ -530,15 +578,19 @@ public class BoardManager : MonoBehaviour
     }
     bool CanSelect(TileInfo tileInfo)
     {
-        //Debug.Log(CanSelectZ(tileInfo));
+        if (!IsGo(tileInfo))
+        {
+            return false;
+        }
         return CanSelectZ(tileInfo) && CanSelectXY(tileInfo);
-        
+        //Debug.Log(CanSelectZ(tileInfo));
+
     }
     bool CanSelectXY(TileInfo tileInfo)
     {
         if (tileInfo.y - 1 >= 0)
         {
-            if (GetTileXCount(tileInfo.y, tileInfo.layer)%2 == GetTileXCount(tileInfo.y - 1, tileInfo.layer) % 2
+            if (GetTileXCount(tileInfo.y, tileInfo.layer) % 2 == GetTileXCount(tileInfo.y - 1, tileInfo.layer) % 2
                        )
             {
                 print("here");
@@ -554,7 +606,7 @@ public class BoardManager : MonoBehaviour
             else
             {
                 print("here");
-                if (GetTileXCount(tileInfo.y, tileInfo.layer)%2==0)
+                if (GetTileXCount(tileInfo.y, tileInfo.layer) % 2 == 0)
                 {
                     if ((GetGoByCoord(tileInfo.x - 1, tileInfo.y - 1, tileInfo.layer) == null)
                                         && (GetGoByCoord(tileInfo.x, tileInfo.y - 1, tileInfo.layer) == null))
@@ -574,20 +626,20 @@ public class BoardManager : MonoBehaviour
                         return true;
                     }
                 }
-                               
-                
+
+
             }
         }
         else
         {
             return true;
         }
-        if (tileInfo.y+1<GetTileYCount(tileInfo.layer))
+        if (tileInfo.y + 1 < GetTileYCount(tileInfo.layer))
         {
-            if (GetTileXCount(tileInfo.y, tileInfo.layer)%2 == GetTileXCount(tileInfo.y + 1, tileInfo.layer) % 2)
+            if (GetTileXCount(tileInfo.y, tileInfo.layer) % 2 == GetTileXCount(tileInfo.y + 1, tileInfo.layer) % 2)
             {
                 print("here");
-                               
+
                 if (GetGoByCoord(tileInfo.x, tileInfo.y + 1, tileInfo.layer) == null)
                 {
                     print("here");
@@ -597,7 +649,7 @@ public class BoardManager : MonoBehaviour
             }
             else
             {
-                if (GetTileXCount(tileInfo.y, tileInfo.layer) %2==0)
+                if (GetTileXCount(tileInfo.y, tileInfo.layer) % 2 == 0)
                 {
                     if ((GetGoByCoord(tileInfo.x - 1, tileInfo.y + 1, tileInfo.layer) == null)
                                         && (GetGoByCoord(tileInfo.x, tileInfo.y + 1, tileInfo.layer) == null))
@@ -617,22 +669,22 @@ public class BoardManager : MonoBehaviour
                         return true;
                     }
                 }
-                
+
             }
         }
         else
         {
             return true;
         }
-        
-        
+
+
         return false;
 
     }
     public void TileSelected(Tile tile)
     {
         Debug.Log(CanSelect(tile.tileInfo));
-       
+
         if (!clickable.Contains(tile.tileInfo))
         {
             return;
@@ -690,7 +742,7 @@ public class BoardManager : MonoBehaviour
         Destroy(tile1.gameObject);
         Destroy(tile2.gameObject);
 
-              
+
         PostMove();
     }
 
@@ -699,8 +751,8 @@ public class BoardManager : MonoBehaviour
         //GetAllTileInfos();
         clickable.Clear();
         matchable.Clear();
-        
-        clickable.AddRange( GetAllClickable());
+
+        clickable.AddRange(GetAllClickable());
         if (!IsMatchingPossible())
         {
             Debug.LogError("Match not possible");
@@ -709,12 +761,53 @@ public class BoardManager : MonoBehaviour
         }
         else
         {
-           matchable= GetAllMatchable();
+            matchable = GetAllMatchable();
         }
 
-        ColorList(clickable,Color.red);
+        ColorList(matchable);
     }
-       GameObject GetGoByCoord(int x, int y, int depth)
+    bool IsGo(Tile tile)
+    {
+        try
+        {
+            if (allTileInfo.Find(xx => xx.x == tile.tileInfo.x && xx.y == tile.tileInfo.y && xx.layer == tile.tileInfo.layer).go)
+            {
+
+            }
+            return true;
+
+        }
+        catch (Exception)
+        {
+
+            return false;
+        }
+
+
+    }
+    bool IsGo(TileInfo tileInfo)
+    {
+        try
+        {
+            if (allTileInfo.Find(xx => xx.x == tileInfo.x && xx.y == tileInfo.y && xx.layer == tileInfo.layer).go != null)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+
+        }
+        catch (Exception)
+        {
+
+            return false;
+        }
+
+
+    }
+    GameObject GetGoByCoord(int x, int y, int depth)
     {
         try
         {
@@ -724,13 +817,15 @@ public class BoardManager : MonoBehaviour
         catch (Exception)
         {
 
-            return null;        }
-       
-    } GameObject GetGoByCoord(Tile tile)
+            return null;
+        }
+
+    }
+    GameObject GetGoByCoord(Tile tile)
     {
         try
         {
-        return allTileInfo.Find(xx => xx.x == tile.tileInfo.x && xx.y == tile.tileInfo.y && xx.layer == tile.tileInfo.layer).go;
+            return allTileInfo.Find(xx => xx.x == tile.tileInfo.x && xx.y == tile.tileInfo.y && xx.layer == tile.tileInfo.layer).go;
 
         }
         catch (Exception)
@@ -739,7 +834,8 @@ public class BoardManager : MonoBehaviour
             return null;
         }
 
-    } }
+    }
+}
 
 
 [System.Serializable]
@@ -809,7 +905,7 @@ public class TileInfo
         this.id = id;
         this.matchId = matchId;
     }
-    public TileInfo(int x, int y, int layer, int id, int matchId,GameObject go,Vector3 worldPostion)
+    public TileInfo(int x, int y, int layer, int id, int matchId, GameObject go, Vector3 worldPostion)
     {
         this.x = x;
         this.y = y;
