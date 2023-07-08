@@ -26,13 +26,17 @@ public class BoardManager : MonoBehaviour
     public List<TileInfo> clickable = new();
     public List<TileInfo> matchable = new();
     public string selectedTileIndex;
-
+    public TextMeshProUGUI gameStatusText;
+    private Vector2 prevTextpos;
+    public Button solve;
     private void Awake()
     {
         _instance = this;
     }
     private void Start()
     {
+        solve.onClick.AddListener(() => { Solve();solve.gameObject.SetActive(false); });
+        prevTextpos = gameStatusText.GetComponent<RectTransform>().anchoredPosition;
         Cube = piecesParent.transform.GetChild(0).gameObject;
 
         size = Cube.GetComponent<Renderer>().bounds.size;
@@ -40,6 +44,7 @@ public class BoardManager : MonoBehaviour
         //table = new Table(layers, columns, rows);
         //grid = new (x, y, layers);
         allTileInfo = new();
+
         GenerateBoard();
 
     }
@@ -67,7 +72,10 @@ public class BoardManager : MonoBehaviour
     public void GenerateBoard()
     {
 
+
         StopCoroutine(nameof(MakeSolvableD));
+        SetText("Making level for you.");
+        solve.gameObject.SetActive(false);
         if (allTileInfo.Count>0)
         {
             foreach (var item in allTileInfo)
@@ -122,6 +130,7 @@ public class BoardManager : MonoBehaviour
         }
         MakeSolvable();
         PostMove();
+        //SetText("");
 
     }
     int GetRandomMatchId()
@@ -275,7 +284,7 @@ public class BoardManager : MonoBehaviour
 
 
 
-                b = tempClickable[1];
+                b = tempClickable[tempClickable.Count - 1];
 
 
                 if (a == null || b == null)
@@ -306,7 +315,7 @@ public class BoardManager : MonoBehaviour
                 TileInfo a, b;
 
                 a = tempClickable[0];
-                b = tempClickable[1];
+                b = tempClickable[tempClickable.Count-1];
                 if (a == null || b == null)
                 {
                     continue;
@@ -326,7 +335,7 @@ public class BoardManager : MonoBehaviour
         }
 
 
-        Debug.LogError(matchable.Count);
+        //Debug.LogError(matchable.Count);
 
     }
     public void DestroyMatchable()
@@ -435,14 +444,14 @@ public class BoardManager : MonoBehaviour
             if (clickable.Count == 0)
             {
 
-                Debug.LogError("clickable not possible");
-                Debug.LogError(allTileInfo.Count);
+                //Debug.LogError("clickable not possible");
+                //Debug.LogError(allTileInfo.Count);
                 break;
             }
             Debug.ClearDeveloperConsole();
             matchable = GetAllMatchable();
             //Debug.LogError(" Clickable " + clickable.Count + " Matchable " + matchable.Count);
-            MakeMatchable(6);
+            MakeMatchable(3);
             clickable.Clear();
             clickable.AddRange(GetAllClickable());
             matchable.Clear();
@@ -452,12 +461,14 @@ public class BoardManager : MonoBehaviour
 
 
             ColorList(matchable);
-            yield return null;
+            yield return new WaitForSeconds(0.1f);
             DestroyMatchable();
 
 
         }
         MakeGOForAllAccordingToMatchid();
+        solve.gameObject.SetActive(true); ;
+        SetText("");
     }
     public void MakeGOForAllAccordingToMatchid()
     {
@@ -748,6 +759,7 @@ public class BoardManager : MonoBehaviour
 
     void PostMove()
     {
+
         //GetAllTileInfos();
         clickable.Clear();
         matchable.Clear();
@@ -755,16 +767,32 @@ public class BoardManager : MonoBehaviour
         clickable.AddRange(GetAllClickable());
         if (!IsMatchingPossible())
         {
-            Debug.LogError("Match not possible");
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            SetText("Match not possible..");
 
+
+            StartCoroutine(DelayGenerateBoard());
+            return;
         }
         else
         {
             matchable = GetAllMatchable();
         }
 
-        ColorList(matchable);
+        ColorList(clickable);
+    }
+    void SetText(string text)
+    {
+
+        gameStatusText.text = text;
+         //gameStatusText.rectTransform.anchoredPosition= prevTextpos;
+        //iTween.MoveTo(gameStatusText.gameObject, new Vector3(), 2.5f);
+
+    }
+    IEnumerator DelayGenerateBoard()
+    {
+        yield return new WaitForSeconds(3);
+        GenerateBoard();
+
     }
     bool IsGo(Tile tile)
     {
